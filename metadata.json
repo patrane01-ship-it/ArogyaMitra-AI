@@ -1,0 +1,6 @@
+{
+  "name": "ArogyaMitra AI",
+  "description": "An AI-powered clinical assistant that analyzes health records, extracts clinical parameter timelines, manages medication reminders, and prepares professional doctor-prep summary reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
