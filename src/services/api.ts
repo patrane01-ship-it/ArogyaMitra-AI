@@ -24,7 +24,12 @@ export class ApiError extends Error {
 }
 
 async function fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(url, options);
+  const activeProfile = localStorage.getItem('arogya_profile_id') || 'local_user';
+  const headers = {
+    ...options.headers,
+    'x-profile-id': activeProfile
+  };
+  const res = await fetch(url, { ...options, headers });
   
   if (!res.ok) {
     let errorData: any = {};
@@ -59,6 +64,7 @@ export const api = {
     reportDate: string, 
     rawText?: string
   ): Promise<HealthRecord> {
+    const activeProfile = localStorage.getItem('arogya_profile_id') || 'local_user';
     const formData = new FormData();
     if (file) {
       formData.append('file', file);
@@ -71,7 +77,10 @@ export const api = {
 
     const res = await fetch(`${API_BASE}/records/upload`, {
       method: 'POST',
-      body: formData
+      body: formData,
+      headers: {
+        'x-profile-id': activeProfile
+      }
     });
 
     if (!res.ok) {

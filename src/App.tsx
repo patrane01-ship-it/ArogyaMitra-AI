@@ -13,7 +13,9 @@ import {
   X,
   Search,
   LogOut,
-  Brain
+  Brain,
+  Sparkles,
+  User
 } from 'lucide-react';
 
 // Components
@@ -25,9 +27,10 @@ import { DoctorPrep } from './components/DoctorPrep.tsx';
 import { RecordsLog } from './components/RecordsLog.tsx';
 import { RecordDetailPage } from './components/RecordDetailPage.tsx';
 import { SharedView } from './components/SharedView.tsx';
+import { AdvancedHub } from './components/AdvancedHub.tsx';
 import AIChatbot from './components/AIChatbot.tsx';
 
-type TabType = 'dashboard' | 'upload' | 'timeline' | 'reminders' | 'report' | 'records' | 'chat';
+type TabType = 'dashboard' | 'upload' | 'timeline' | 'reminders' | 'report' | 'records' | 'chat' | 'advanced';
 
 export default function App() {
   const [currentHash, setCurrentHash] = useState(window.location.hash);
@@ -35,6 +38,23 @@ export default function App() {
   const [activeRecordId, setActiveRecordId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [globalSearchTerm, setGlobalSearchTerm] = useState('');
+  const [profileName, setProfileName] = useState<string>('Self (Primary)');
+
+  useEffect(() => {
+    const syncProfile = () => {
+      const activeId = localStorage.getItem('arogya_profile_id') || 'local_user';
+      if (activeId === 'local_user_father') {
+        setProfileName('Ramesh Prasad (Father)');
+      } else if (activeId === 'local_user_mother') {
+        setProfileName('Savitri Devi (Mother)');
+      } else {
+        setProfileName('Self (Primary)');
+      }
+    };
+    syncProfile();
+    window.addEventListener('storage', syncProfile);
+    return () => window.removeEventListener('storage', syncProfile);
+  }, []);
 
   const handleLogout = () => {
     if (confirm('Are you sure you want to clear your current clinical session? This will reset all active states and clear local tokens.')) {
@@ -90,6 +110,7 @@ export default function App() {
     { id: 'reminders', label: 'Medication Scheduler', icon: CalendarClock },
     { id: 'report', label: 'Doctor Prep Summary', icon: FileText },
     { id: 'records', label: 'Medical Index Logs', icon: FileSpreadsheet },
+    { id: 'advanced', label: 'Advanced Hub', icon: Sparkles }
   ];
 
   const handleTabChange = (tabId: string) => {
@@ -107,7 +128,7 @@ export default function App() {
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row" id="app-root">
       
       {/* Mobile Top Header */}
-      <div className="md:hidden bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between sticky top-0 z-50 shadow-sm">
+      <div className="md:hidden bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between sticky top-0 z-50 shadow-sm print:hidden">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center text-white font-bold font-serif text-sm">
             AM
@@ -126,18 +147,29 @@ export default function App() {
 
       {/* Persistent App Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-150 transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex md:flex-col justify-between
+        fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-150 transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex md:flex-col justify-between print:hidden
         ${mobileMenuOpen ? 'translate-x-0 pt-14 md:pt-0' : '-translate-x-full'}
       `} id="app-sidebar">
         <div>
           {/* Brand/Logo */}
-          <div className="hidden md:flex items-center gap-3 px-6 py-6 border-b border-gray-100">
-            <div className="w-10 h-10 rounded-xl bg-teal-600 flex items-center justify-center text-white font-bold font-serif shadow-sm">
-              AM
+          <div className="hidden md:flex flex-col border-b border-gray-100">
+            <div className="flex items-center gap-3 px-6 py-5">
+              <div className="w-10 h-10 rounded-xl bg-teal-600 flex items-center justify-center text-white font-bold font-serif shadow-sm">
+                AM
+              </div>
+              <div>
+                <h1 className="text-sm font-bold text-gray-900 font-serif leading-none">ArogyaMitra AI</h1>
+                <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wider mt-1.5 block">Clinical Intelligence</span>
+              </div>
             </div>
-            <div>
-              <h1 className="text-sm font-bold text-gray-900 font-serif leading-none">ArogyaMitra AI</h1>
-              <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wider mt-1.5 block">Clinical Intelligence</span>
+            
+            {/* Active Profile Banner */}
+            <div className="mx-4 mb-4 px-3 py-2 bg-teal-50 border border-teal-100 rounded-xl flex items-center gap-2 text-xs text-teal-800">
+              <User className="w-4 h-4 text-teal-600 shrink-0" />
+              <div className="min-w-0">
+                <span className="text-[9px] uppercase tracking-wider text-teal-600 font-bold block">Patient Context</span>
+                <span className="font-bold truncate block">{profileName}</span>
+              </div>
             </div>
           </div>
 
@@ -197,7 +229,7 @@ export default function App() {
       <main className="flex-1 flex flex-col min-w-0">
         
         {/* Dynamic Nav-tab Header Bar (Desktop Only) */}
-        <header className="hidden md:flex justify-between items-center bg-white border-b border-gray-100 px-8 py-4 sticky top-0 z-10 shadow-sm gap-4">
+        <header className="hidden md:flex justify-between items-center bg-white border-b border-gray-100 px-8 py-4 sticky top-0 z-10 shadow-sm gap-4 print:hidden">
           <div className="flex items-center gap-6 flex-1 max-w-xl">
             <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider font-mono whitespace-nowrap shrink-0">
               {activeRecordId ? 'Record Details' : navItems.find(item => item.id === activeTab)?.label}
@@ -230,7 +262,7 @@ export default function App() {
         </header>
 
         {/* Scrollable Stage Content */}
-        <div className="flex-1 p-4 md:p-8 overflow-y-auto max-w-7xl w-full mx-auto" id="stage-area">
+        <div className="flex-1 p-4 md:p-8 overflow-y-auto max-w-7xl w-full mx-auto print:p-0 print:m-0 print:max-w-none" id="stage-area">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeRecordId ? `detail-${activeRecordId}` : activeTab}
@@ -272,6 +304,7 @@ export default function App() {
                       setSearchTerm={setGlobalSearchTerm}
                     />
                   )}
+                  {activeTab === 'advanced' && <AdvancedHub />}
                 </>
               )}
             </motion.div>

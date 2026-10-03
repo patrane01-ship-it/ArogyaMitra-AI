@@ -230,16 +230,22 @@ Return a JSON object exactly matching this schema:
   return { parameters, reminders };
 }
 
+// HELPER: Get dynamic userId from headers
+function getUserId(req: Request): string {
+  return (req.headers['x-profile-id'] as string) || 'local_user';
+}
+
 // HELPER: Recompute Risk Score
-async function runRecomputeRiskScore(): Promise<RiskScore> {
-  const parameters = await ClinicalParameterRepository.findAll();
+async function runRecomputeRiskScore(userId: string = 'local_user'): Promise<RiskScore> {
+  const parameters = await ClinicalParameterRepository.findAll(userId);
   const hasGeminiKey = getHasGeminiKey();
 
-  const latest = await RiskScoreRepository.findLatest();
+  const latest = await RiskScoreRepository.findLatest(userId);
   const nextVersion = (latest ? latest.version : 0) + 1;
 
   if (parameters.length === 0) {
     const score = new RiskScore({
+      user_id: userId,
       overall_risk: 0.1,
       risk_level: 'LOW',
       contributing_factors: [{ param_name: 'General', value: 0, weight: 0.1, contribution: 0.0, status: 'NORMAL' }],
@@ -335,6 +341,7 @@ Return the result strictly in this JSON format:
       if (response.text) {
         const result = JSON.parse(response.text.trim());
         const score = new RiskScore({
+          user_id: userId,
           overall_risk: result.overall_risk,
           risk_level: result.risk_level,
           contributing_factors: result.contributing_factors && result.contributing_factors.length > 0 
@@ -434,6 +441,7 @@ Return the result strictly in this JSON format:
   }
 
   const score = new RiskScore({
+    user_id: userId,
     overall_risk,
     contributing_factors,
     recommendations,
@@ -446,10 +454,10 @@ Return the result strictly in this JSON format:
 }
 
 // HELPER: Generate Doctor Prep Summary Report
-async function runGenerateDoctorReport(): Promise<DoctorReport> {
-  const records = await HealthRecordRepository.findAll();
-  const parameters = await ClinicalParameterRepository.findAll();
-  const latestRisk = await RiskScoreRepository.findLatest();
+async function runGenerateDoctorReport(userId: string = 'local_user'): Promise<DoctorReport> {
+  const records = await HealthRecordRepository.findAll(userId);
+  const parameters = await ClinicalParameterRepository.findAll(userId);
+  const latestRisk = await RiskScoreRepository.findLatest(userId);
   const hasGeminiKey = getHasGeminiKey();
 
   if (records.length === 0) {
@@ -507,6 +515,7 @@ Return ONLY the Markdown content. Do not wrap it in markdown code blocks.
 
       if (response.text) {
         const report = new DoctorReport({
+          user_id: userId,
           report_content: response.text.trim(),
           records_included: records.map(r => r.record_id)
         });
@@ -585,6 +594,7 @@ Return ONLY the Markdown content. Do not wrap it in markdown code blocks.
   content += `- **Scheduler Compliance**: *"Are there active medication or refill schedules we should review, update, or deprecate?"*\n`;
 
   const report = new DoctorReport({
+    user_id: userId,
     report_content: content,
     records_included: records.map(r => r.record_id)
   });
@@ -601,7 +611,8 @@ Return ONLY the Markdown content. Do not wrap it in markdown code blocks.
 // 1. HEALTH RECORDS ENDPOINTS
 app.get('/api/records', async (req: Request, res: Response) => {
   try {
-    const records = await HealthRecordRepository.findAll();
+    const userId = getUserId(req);
+    const records = await HealthRecordRepository.findAll(userId);
     res.json(records.map(r => r.toDict()));
   } catch (err: any) {
     res.status(500).json({ error: 'DatabaseError', message: err.message });
@@ -649,6 +660,7 @@ app.get('/api/records/:id/download', async (req: Request, res: Response) => {
 
 app.post('/api/records/upload', upload.single('file'), async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
     const recordType = (req.body.record_type || 'MANUAL_ENTRY');
     const reportDateStr = req.body.report_date;
     const reportDate = reportDateStr ? new Date(reportDateStr) : new Date();
@@ -684,8 +696,9 @@ app.post('/api/records/upload', upload.single('file'), async (req: Request, res:
       await fs.promises.writeFile(sourceFilePath, encryptedData);
     }
 
-    // Save initial Health Record
+    // Save initial Health Record with active user/profile ID
     const record = new HealthRecord({
+      user_id: userId,
       record_type: recordType,
       report_date: reportDate,
       raw_text: rawText || (req.file ? req.file.originalname : 'Manual entry'),
@@ -721,6 +734,7 @@ app.post('/api/records/upload', upload.single('file'), async (req: Request, res:
     for (const r of reminders) {
       try {
         const rem = new Reminder({
+          user_id: userId,
           reminder_type: r.reminder_type as any,
           title: r.title,
           due_date: new Date(r.due_date),
@@ -738,8 +752,8 @@ app.post('/api/records/upload', upload.single('file'), async (req: Request, res:
     record.is_processed = true;
     await HealthRecordRepository.save(record);
 
-    // Recompute overall clinical risk score
-    await runRecomputeRiskScore();
+    // Recompute overall clinical risk score for this profile
+    await runRecomputeRiskScore(userId);
 
     res.status(201).json(record.toDict());
   } catch (err: any) {
@@ -768,12 +782,13 @@ app.put('/api/records/:id', async (req: Request, res: Response) => {
 
 app.delete('/api/records/:id', async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
     const record = await HealthRecordRepository.findById(req.params.id);
     if (!record) {
       return res.status(404).json({ error: 'RecordNotFound', message: 'Record not found' });
     }
     await HealthRecordRepository.softDelete(req.params.id);
-    await runRecomputeRiskScore(); // Recalculate as a biomarker has been removed
+    await runRecomputeRiskScore(userId); // Recalculate as a biomarker has been removed
     res.json({ success: true, message: 'Health record deleted successfully' });
   } catch (err: any) {
     res.status(500).json({ error: 'DatabaseError', message: err.message });
@@ -783,7 +798,8 @@ app.delete('/api/records/:id', async (req: Request, res: Response) => {
 // 2. CLINICAL PARAMETERS ENDPOINTS
 app.get('/api/params', async (req: Request, res: Response) => {
   try {
-    const params = await ClinicalParameterRepository.findAll();
+    const userId = getUserId(req);
+    const params = await ClinicalParameterRepository.findAll(userId);
     res.json(params.map(p => p.toDict()));
   } catch (err: any) {
     res.status(500).json({ error: 'DatabaseError', message: err.message });
@@ -792,8 +808,9 @@ app.get('/api/params', async (req: Request, res: Response) => {
 
 app.get('/api/params/:paramName', async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
     const paramName = decodeURIComponent(req.params.paramName);
-    const params = await ClinicalParameterRepository.findByParamName(paramName);
+    const params = await ClinicalParameterRepository.findByParamName(paramName, userId);
     res.json(params.map(p => p.toDict()));
   } catch (err: any) {
     res.status(500).json({ error: 'DatabaseError', message: err.message });
@@ -802,12 +819,13 @@ app.get('/api/params/:paramName', async (req: Request, res: Response) => {
 
 app.put('/api/params/:paramId', async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
     const { value } = req.body;
     if (value === undefined || isNaN(value)) {
       return res.status(400).json({ error: 'ValidationError', message: 'Value must be a valid number.' });
     }
 
-    const allParams = await ClinicalParameterRepository.findAll();
+    const allParams = await ClinicalParameterRepository.findAll(userId);
     const cp = allParams.find(p => p.param_id === req.params.paramId);
     if (!cp) {
       return res.status(404).json({ error: 'ParameterNotFound', message: 'Clinical parameter not found.' });
@@ -818,7 +836,7 @@ app.put('/api/params/:paramId', async (req: Request, res: Response) => {
     cp.validate();
 
     await ClinicalParameterRepository.update(cp.param_id, cp.value, cp.status);
-    await runRecomputeRiskScore(); // Recalculate overall risk with updated biomarker
+    await runRecomputeRiskScore(userId); // Recalculate overall risk with updated biomarker
 
     res.json(cp.toDict());
   } catch (err: any) {
@@ -829,10 +847,11 @@ app.put('/api/params/:paramId', async (req: Request, res: Response) => {
 // 3. REMINDERS ENDPOINTS
 app.get('/api/reminders', async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
     const activeOnly = req.query.active_only === 'true';
     const reminders = activeOnly 
-      ? await ReminderRepository.findActive() 
-      : await ReminderRepository.findAll();
+      ? await ReminderRepository.findActive(userId) 
+      : await ReminderRepository.findAll(userId);
     res.json(reminders.map(r => r.toDict()));
   } catch (err: any) {
     res.status(500).json({ error: 'DatabaseError', message: err.message });
@@ -841,8 +860,10 @@ app.get('/api/reminders', async (req: Request, res: Response) => {
 
 app.post('/api/reminders', async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
     const { title, reminder_type, due_date, recurrence } = req.body;
     const reminder = new Reminder({
+      user_id: userId,
       title,
       reminder_type,
       due_date: new Date(due_date),
@@ -892,11 +913,11 @@ app.delete('/api/reminders/:id', async (req: Request, res: Response) => {
 
 app.patch('/api/reminders/:id/ack', async (req: Request, res: Response) => {
   try {
-    const { is_acknowledged } = req.body;
     const reminder = await ReminderRepository.findById(req.params.id);
     if (!reminder) {
       return res.status(404).json({ error: 'ReminderNotFound', message: 'Reminder not found' });
     }
+    const { is_acknowledged } = req.body;
     await ReminderRepository.acknowledge(req.params.id, !!is_acknowledged);
     reminder.is_acknowledged = !!is_acknowledged;
     res.json(reminder.toDict());
@@ -908,7 +929,8 @@ app.patch('/api/reminders/:id/ack', async (req: Request, res: Response) => {
 // 4. DOCTOR REPORTS ENDPOINTS
 app.get('/api/report/latest', async (req: Request, res: Response) => {
   try {
-    const report = await DoctorReportRepository.findLatest();
+    const userId = getUserId(req);
+    const report = await DoctorReportRepository.findLatest(userId);
     if (!report) {
       return res.status(404).json({ error: 'ReportNotFound', message: 'No doctor prep reports available yet.' });
     }
@@ -920,7 +942,8 @@ app.get('/api/report/latest', async (req: Request, res: Response) => {
 
 app.post('/api/report/generate', async (req: Request, res: Response) => {
   try {
-    const report = await runGenerateDoctorReport();
+    const userId = getUserId(req);
+    const report = await runGenerateDoctorReport(userId);
     res.status(201).json(report.toDict());
   } catch (err: any) {
     res.status(400).json({ error: 'GenerationError', message: err.message });
@@ -962,9 +985,10 @@ app.post('/api/report/:reportId/share', async (req: Request, res: Response) => {
 // 5. RISK ENGINE ENDPOINTS
 app.get('/api/risk/current', async (req: Request, res: Response) => {
   try {
-    let score = await RiskScoreRepository.findLatest();
+    const userId = getUserId(req);
+    let score = await RiskScoreRepository.findLatest(userId);
     if (!score) {
-      score = await runRecomputeRiskScore();
+      score = await runRecomputeRiskScore(userId);
     }
     res.json(score.toDict());
   } catch (err: any) {
@@ -974,7 +998,8 @@ app.get('/api/risk/current', async (req: Request, res: Response) => {
 
 app.get('/api/risk/history', async (req: Request, res: Response) => {
   try {
-    const history = await RiskScoreRepository.getHistory();
+    const userId = getUserId(req);
+    const history = await RiskScoreRepository.getHistory(userId);
     res.json(history.map(s => s.toDict()));
   } catch (err: any) {
     res.status(500).json({ error: 'DatabaseError', message: err.message });
@@ -983,7 +1008,8 @@ app.get('/api/risk/history', async (req: Request, res: Response) => {
 
 app.post('/api/risk/recompute', async (req: Request, res: Response) => {
   try {
-    const score = await runRecomputeRiskScore();
+    const userId = getUserId(req);
+    const score = await runRecomputeRiskScore(userId);
     res.json(score.toDict());
   } catch (err: any) {
     res.status(500).json({ error: 'DatabaseError', message: err.message });
