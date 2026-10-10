@@ -112,6 +112,12 @@ class PromptInjectionDetectedError(ArogyaError):
         super().__init__(message, status_code=400)
 
 
+class GuardrailViolationError(ArogyaError):
+    """Raised when LLM output violates critical safety guardrails."""
+    def __init__(self, message: str = "Output blocked by guardrail"):
+        super().__init__(message, status_code=422)
+
+
 class AuthenticationError(ArogyaError):
     """Raised when authentication fails."""
     def __init__(self, message: str = "Authentication failed"):

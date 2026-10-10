@@ -1,53 +1,54 @@
-# ── FastAPI & Server (Core for Step 1) ───────────────────
+# ── FastAPI & Server ───────────────────────────────────
 fastapi==0.111.0
 uvicorn[standard]==0.30.1
 python-multipart==0.0.9
 
 # ── Validation & Settings ──────────────────────────────────
-pydantic>=2.0.0
-pydantic-settings>=2.0.0
+pydantic==2.7.4
+pydantic-settings==2.3.3
+email-validator==2.2.0
 python-dotenv==1.0.1
+python-dateutil==2.9.0.post0
 
 # ── Logging ────────────────────────────────────────────────
 loguru==0.7.2
+python-json-logger==2.0.7
 
-# ── Database (Core for Step 1) ───────────────────────────
+# ── Database (PostgreSQL + SQLite) ─────────────────────────
 sqlalchemy==2.0.30
 alembic==1.13.1
+psycopg2-binary==2.9.9
+asyncpg==0.29.0
 aiosqlite==0.19.0
 
-# ── Redis (Core for Step 1) ───────────────────────────────
+# ── Redis & Cache ──────────────────────────────────────────
 redis==5.0.4
+cachetools==5.3.3
 
-# ── Security (Core for Step 1) ───────────────────────────
+# ── Security & Cryptography ────────────────────────────────
 cryptography==42.0.8
 python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
 
-# ── AI & LangGraph (deferred to Step 2+) ─────────────────
-# groq==0.9.0
-# langchain==0.2.5
-# langgraph==0.1.14
-# langchain-groq==0.1.6
+# ── AI & LangGraph ─────────────────────────────────────────
+groq==0.9.0
+langchain==0.2.5
+langgraph==0.1.14
+langchain-groq==0.1.6
 
-# ── OCR (deferred to Step 2+) ─────────────────────────────
-# pytesseract==0.3.13
-# easyocr==1.7.1
-# Pillow>=10.4.0
-# pdf2image==1.17.0
+# ── OCR & Document Processing ──────────────────────────────
+pytesseract==0.3.13
+easyocr==1.7.1
+Pillow==10.3.0
+pdf2image==1.17.0
+python-magic==0.4.27
 
-# ── Vector Store (deferred to Step 2+) ────────────────────
-# chromadb==0.5.3
-# sentence-transformers==3.0.1
+# ── Vector Store & Embeddings ──────────────────────────────
+chromadb==0.5.3
+sentence-transformers==3.0.1
 
-# ── PDF Generation (deferred to Step 2+) ───────────────────
-# reportlab==4.2.2
+# ── PDF Generation ─────────────────────────────────────────
+reportlab==4.2.2
 
-# ── Additional (deferred to Step 2+) ───────────────────────
-# passlib[bcrypt]==1.7.4
-# email-validator==2.2.0
-# python-dateutil==2.9.0.post0
-# python-json-logger==2.0.7
-# slowapi==0.1.9
-# python-magic==0.4.27
-# psycopg2-binary==2.9.9
-# asyncpg==0.29.0
+# ── Rate Limiting ──────────────────────────────────────────
+slowapi==0.1.9

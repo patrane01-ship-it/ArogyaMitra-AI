@@ -1,0 +1,17 @@
+export const SUPPORTED_PARAMETERS = [
+  { name: 'HbA1c', unit: '%', ref_min: 4.0, ref_max: 5.7 },
+  { name: 'Fasting Blood Sugar', unit: 'mg/dL', ref_min: 70, ref_max: 100 },
+  { name: 'Total Cholesterol', unit: 'mg/dL', ref_min: 0, ref_max: 200 },
+  { name: 'LDL', unit: 'mg/dL', ref_min: 0, ref_max: 100 },
+  { name: 'HDL', unit: 'mg/dL', ref_min: 40, ref_max: 60 },
+  { name: 'Triglycerides', unit: 'mg/dL', ref_min: 0, ref_max: 150 },
+  { name: 'Hemoglobin', unit: 'g/dL', ref_min: 12.0, ref_max: 16.0 },
+  { name: 'Creatinine', unit: 'mg/dL', ref_min: 0.6, ref_max: 1.2 },
+  { name: 'eGFR', unit: 'mL/min/1.73m²', ref_min: 60, ref_max: 120 },
+  { name: 'Blood Pressure Systolic', unit: 'mmHg', ref_min: 90, ref_max: 120 },
+  { name: 'Blood Pressure Diastolic', unit: 'mmHg', ref_min: 60, ref_max: 80 },
+  { name: 'TSH', unit: 'mIU/L', ref_min: 0.4, ref_max: 4.0 },
+  { name: 'Vitamin D', unit: 'ng/mL', ref_min: 20, ref_max: 50 },
+  { name: 'Vitamin B12', unit: 'pg/mL', ref_min: 200, ref_max: 900 },
+  { name: 'Uric Acid', unit: 'mg/dL', ref_min: 2.4, ref_max: 6.0 },
+];
