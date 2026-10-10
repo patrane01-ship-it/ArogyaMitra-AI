@@ -8,6 +8,7 @@ from backend.repositories.clinical_param_repo import ClinicalParameterRepository
 from backend.repositories.risk_score_repo import RiskScoreRepository
 from backend.repositories.reminder_repo import ReminderRepository
 from backend.repositories.doctor_report_repo import DoctorReportRepository
+from backend.repositories.user_repo import UserRepository
 
 __all__ = [
     "HealthRecordRepository",
@@ -15,4 +16,5 @@ __all__ = [
     "RiskScoreRepository",
     "ReminderRepository",
     "DoctorReportRepository",
+    "UserRepository",
 ]

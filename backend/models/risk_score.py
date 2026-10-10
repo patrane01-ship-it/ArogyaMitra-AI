@@ -31,6 +31,11 @@ class RiskScore(Base):
     contributing_factors = Column(JSON, nullable=True)  # List of {param_name, value, weight, contribution}
     recommendations = Column(JSON, nullable=True)       # List of str recommendations
     version = Column(Integer, default=1, nullable=False)
+    # Phase 2 ML extensions
+    model_id = Column(String(36), nullable=True)
+    model_version = Column(String(50), nullable=True)
+    ml_confidence = Column(Float, nullable=True)
+    scoring_method = Column(String(50), default="RULE_BASED", nullable=False)
 
     @staticmethod
     def compute_risk_level(score: float) -> str:
@@ -62,6 +67,10 @@ class RiskScore(Base):
             "contributing_factors": self.contributing_factors or [],
             "recommendations": self.recommendations or [],
             "version": self.version,
+            "model_id": self.model_id,
+            "model_version": self.model_version,
+            "ml_confidence": self.ml_confidence,
+            "scoring_method": self.scoring_method,
         }
 
     @classmethod
@@ -81,6 +90,10 @@ class RiskScore(Base):
             contributing_factors=data.get("contributing_factors", []),
             recommendations=data.get("recommendations", []),
             version=int(data.get("version", 1)),
+            model_id=data.get("model_id"),
+            model_version=data.get("model_version"),
+            ml_confidence=data.get("ml_confidence"),
+            scoring_method=data.get("scoring_method", "RULE_BASED"),
         )
         inst.validate()
         return inst

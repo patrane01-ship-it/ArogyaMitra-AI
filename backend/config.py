@@ -31,6 +31,17 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "./backend/data/records/encrypted"
     CHROMA_DB_PATH: str = "./backend/data/chroma_db"
     
+    # ── Phase 2 Settings: Auth, ML & Drug DB ────────────
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    BCRYPT_ROUNDS: int = 12
+    DRUG_DB_CSV_PATH: str = "./backend/data/drug_db/drugbank_open.csv"
+    ML_MODELS_DIR: str = "./backend/ml/models"
+    ACTIVE_MODEL_PATH: str = "./backend/ml/models/risk_model_v2.pkl"
+    ANOMALY_THRESHOLD: float = -0.1
+    ANOMALY_CONTAMINATION: float = 0.1
+    DRUG_INTERACTION_DISTANCE_THRESHOLD: float = 0.35
+    
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS_ORIGINS from JSON string to list."""

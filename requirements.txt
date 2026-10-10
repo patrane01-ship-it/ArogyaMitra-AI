@@ -52,3 +52,10 @@ reportlab==4.2.2
 
 # ── Rate Limiting ──────────────────────────────────────────
 slowapi==0.1.9
+
+# ── Machine Learning & Data (Phase 2) ──────────────────────
+joblib==1.3.2
+scikit-learn==1.4.2
+numpy==1.26.4
+pandas==2.2.2
+itertools-more==0.4.0

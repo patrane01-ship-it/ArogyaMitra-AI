@@ -36,6 +36,10 @@ class ClinicalParameter(Base):
     report_date = Column(DateTime, nullable=False, index=True)
     status = Column(String(20), nullable=False, default="NORMAL")
     anomaly_score = Column(Float, nullable=True)
+    # Phase 2 ML extensions
+    isolation_forest_score = Column(Float, nullable=True)
+    is_anomaly = Column(Boolean, nullable=True)
+    ml_risk_contribution = Column(Float, nullable=True)
 
     def compute_status(self) -> str:
         """
@@ -92,6 +96,9 @@ class ClinicalParameter(Base):
             "report_date": self.report_date.isoformat() if self.report_date else None,
             "status": self.status,
             "anomaly_score": self.anomaly_score,
+            "isolation_forest_score": self.isolation_forest_score,
+            "is_anomaly": self.is_anomaly,
+            "ml_risk_contribution": self.ml_risk_contribution,
         }
 
     @classmethod
@@ -112,6 +119,9 @@ class ClinicalParameter(Base):
             report_date=report_date or datetime.now(timezone.utc),
             status=data.get("status", "NORMAL"),
             anomaly_score=data.get("anomaly_score"),
+            isolation_forest_score=data.get("isolation_forest_score"),
+            is_anomaly=data.get("is_anomaly"),
+            ml_risk_contribution=data.get("ml_risk_contribution"),
         )
         inst.validate()
         return inst

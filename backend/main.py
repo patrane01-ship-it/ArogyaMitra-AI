@@ -26,6 +26,16 @@ from backend.routers.reminders_router import router as reminders_router
 from backend.routers.reports_router import router as reports_router
 from backend.routers.share_router import router as share_router
 
+# Phase 2 Routers
+from backend.routers.auth_router import router as auth_router
+from backend.routers.ml_router import router as ml_router
+from backend.routers.anomaly_router import router as anomaly_router
+from backend.routers.drug_router import router as drug_router
+
+# Phase 2 Services (boot)
+from backend.services.ml_risk_engine import MLRiskEngine
+from backend.services.drug_interaction_service import DrugInteractionService
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -58,7 +68,22 @@ async def lifespan(app: FastAPI):
     # Ensure required directories exist
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     os.makedirs(settings.CHROMA_DB_PATH, exist_ok=True)
+    os.makedirs(settings.ML_MODELS_DIR, exist_ok=True)
     os.makedirs("./logs", exist_ok=True)
+    os.makedirs("./backend/data/drug_db", exist_ok=True)
+
+    # ── Phase 2: Boot ML & Drug DB ──────────────────────────
+    ml_loaded = MLRiskEngine.load_model()
+    if ml_loaded:
+        logger.info(f"[Startup] ML Risk Model loaded: {MLRiskEngine._model_version}")
+    else:
+        logger.warning("[Startup] ML model not found. Risk engine running in rule-based fallback mode.")
+
+    drug_loaded = DrugInteractionService.load_drug_db()
+    if drug_loaded:
+        logger.info("[Startup] Drug interaction database loaded from CSV")
+    else:
+        logger.info("[Startup] Drug DB CSV not found. Using built-in interaction list.")
 
     logger.info("ArogyaMitra AI startup validation complete")
     yield
@@ -67,8 +92,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="ArogyaMitra AI",
-    description="Agentic Personal Health Intelligence System",
-    version="1.0.0",
+    description="Agentic Personal Health Intelligence System — Phase 2 (ML + Multi-User Auth)",
+    version="2.0.0",
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
     lifespan=lifespan,
@@ -140,12 +165,19 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 
 # ── Routers ──────────────────────────────────────────────
+# Phase 1 Routers
 app.include_router(records_router)
 app.include_router(params_router)
 app.include_router(risk_router)
 app.include_router(reminders_router)
 app.include_router(reports_router)
 app.include_router(share_router)
+
+# Phase 2 Routers
+app.include_router(auth_router)
+app.include_router(ml_router)
+app.include_router(anomaly_router)
+app.include_router(drug_router)
 
 
 @app.get("/health")

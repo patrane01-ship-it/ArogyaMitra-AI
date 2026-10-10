@@ -30,6 +30,19 @@ from backend.schemas.doctor_report_schema import (
     DoctorReportResponse,
     ShareTokenResponse,
 )
+from backend.schemas.auth_schema import (
+    RegisterRequest,
+    LoginRequest,
+    RefreshRequest,
+    ProfileUpdateRequest,
+    ChangePasswordRequest,
+    RegisterResponse,
+    TokenResponse,
+    RefreshResponse,
+    UserProfileResponse,
+    LogoutResponse,
+    MessageResponse,
+)
 
 __all__ = [
     "HealthRecordBase",
@@ -50,4 +63,16 @@ __all__ = [
     "DoctorReportGenerateResponse",
     "DoctorReportResponse",
     "ShareTokenResponse",
+    # Phase 2 Auth
+    "RegisterRequest",
+    "LoginRequest",
+    "RefreshRequest",
+    "ProfileUpdateRequest",
+    "ChangePasswordRequest",
+    "RegisterResponse",
+    "TokenResponse",
+    "RefreshResponse",
+    "UserProfileResponse",
+    "LogoutResponse",
+    "MessageResponse",
 ]
