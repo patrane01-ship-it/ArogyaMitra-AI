@@ -56,4 +56,6 @@ Thumbs.db
 # Node (for archived version)
 _archive_express_version/node_modules/
 
-*/node_modules/
+
+*__pycache__/
+node_modules/
