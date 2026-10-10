@@ -14,6 +14,9 @@ from backend.core.logger import logger
 from backend.database import get_db
 from backend.models.user import User
 from backend.repositories.user_repo import UserRepository
+from backend.repositories.family_profile_repo import FamilyProfileRepository
+from backend.repositories.subscription_repo import SubscriptionRepository
+from backend.services.family_service import FamilyService
 from backend.services.auth_service import AuthService
 from backend.schemas.auth_schema import (
     RegisterRequest,
@@ -65,6 +68,7 @@ def _clear_refresh_cookie(response: Response) -> None:
 @router.post("/register", response_model=RegisterResponse, status_code=201)
 async def register(
     body: RegisterRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -87,6 +91,24 @@ async def register(
     repo = UserRepository(db)
     created = await repo.create(user)
     await db.commit()
+
+    # Auto-create SELF profile for new user (Phase 3)
+    try:
+        family_repo = FamilyProfileRepository(db)
+        sub_repo = SubscriptionRepository(db)
+        family_service = FamilyService(repo=family_repo, subscription_repo=sub_repo)
+        await family_service.create_self_profile(
+            owner_user_id=created.user_id,
+            member_name=created.full_name,
+        )
+        # Also create FREE subscription
+        await sub_repo.upsert_free(created.user_id)
+        # Assuming we need to commit these changes as well
+        await db.commit()
+    except Exception as e:
+        req_id = getattr(request.state, 'request_id', 'unknown')
+        logger.warning(f'[{req_id}] Could not create SELF profile for user {created.user_id}: {e}')
+        # Non-fatal: registration still succeeds
 
     logger.info(f"[Auth] New user registered: {created.email} | id={created.user_id}")
     return RegisterResponse(

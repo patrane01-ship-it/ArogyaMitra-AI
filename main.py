@@ -32,6 +32,16 @@ from backend.routers.ml_router import router as ml_router
 from backend.routers.anomaly_router import router as anomaly_router
 from backend.routers.drug_router import router as drug_router
 
+# Phase 3 Routers
+from backend.routers.family_router import router as family_router
+from backend.routers.prediction_router import router as prediction_router
+from backend.routers.wearable_router import router as wearable_router
+from backend.routers.subscription_router import router as subscription_router
+from backend.routers.abdm_router import router as abdm_router
+from backend.routers.doctor_access_router import router as doctor_access_router
+from backend.routers.doctor_access_router import public_router as doctor_public_router
+from backend.routers.health_api_router import router_a as api_keys_router, router_b as v1_router
+
 # Phase 2 Services (boot)
 from backend.services.ml_risk_engine import MLRiskEngine
 from backend.services.drug_interaction_service import DrugInteractionService
@@ -92,8 +102,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="ArogyaMitra AI",
-    description="Agentic Personal Health Intelligence System — Phase 2 (ML + Multi-User Auth)",
-    version="2.0.0",
+    description="Agentic Personal Health Intelligence System — Phase 3 (Family Profiles)",
+    version="3.0.0",
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
     lifespan=lifespan,
@@ -179,11 +189,22 @@ app.include_router(ml_router)
 app.include_router(anomaly_router)
 app.include_router(drug_router)
 
+# Phase 3 Routers
+app.include_router(family_router)
+app.include_router(prediction_router)
+app.include_router(wearable_router)
+app.include_router(subscription_router)
+app.include_router(abdm_router)
+app.include_router(doctor_access_router)
+app.include_router(doctor_public_router)
+app.include_router(api_keys_router)
+app.include_router(v1_router)
+
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "ok", "version": "1.0.0"}
+    return {"status": "ok", "version": "3.0.0", "phase": "3"}
 
 
 if __name__ == "__main__":

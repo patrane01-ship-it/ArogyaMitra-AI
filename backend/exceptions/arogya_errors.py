@@ -16,6 +16,18 @@ class ArogyaError(Exception):
         super().__init__(self.message)
 
 
+class ValidationError(ArogyaError):
+    """Raised when input validation fails."""
+    def __init__(self, message: str = "Validation failed"):
+        super().__init__(message, status_code=422)
+
+
+class PaymentError(ArogyaError):
+    """Raised when payment processing fails."""
+    def __init__(self, message: str = "Payment processing failed"):
+        super().__init__(message, status_code=400)
+
+
 # ── Record Validation Errors ───────────────────────────────
 class InvalidRecordTypeError(ArogyaError):
     """Raised when record_type is not a valid enum value."""

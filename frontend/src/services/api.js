@@ -1,147 +1,202 @@
 import axios from 'axios';
 
+// ── In-memory token store (NEVER in localStorage) ────────────
+let _accessToken = null;
+export const setAccessToken = (t) => { _accessToken = t; };
+export const clearAccessToken = () => { _accessToken = null; };
+export const getAccessToken = () => _accessToken;
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '',
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: import.meta.env.VITE_API_URL || '',
+  headers: { 'Content-Type': 'application/json' },
+  withCredentials: true, // needed for httpOnly refresh cookie
 });
 
-// Interceptor for logging or auth header enrichment
+// Request: inject JWT
+api.interceptors.request.use((config) => {
+  if (_accessToken) {
+    config.headers['Authorization'] = `Bearer ${_accessToken}`;
+  }
+  return config;
+});
+
+// Response: on 401 → refresh once → retry
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    const errorMsg = error.response?.data?.message || error.message || 'An error occurred';
-    console.error('[API Error]:', errorMsg, error.response?.data);
+  (res) => res,
+  async (error) => {
+    const original = error.config;
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true;
+      try {
+        const refresh = await axios.post(
+          `${import.meta.env.VITE_API_URL || ''}/api/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
+        const newToken = refresh.data?.access_token;
+        if (newToken) {
+          setAccessToken(newToken);
+          original.headers['Authorization'] = `Bearer ${newToken}`;
+          return api(original);
+        }
+      } catch {
+        clearAccessToken();
+        window.dispatchEvent(new Event('arogya:logout'));
+      }
+    }
     return Promise.reject(error);
   }
 );
 
-// Records API
-export const uploadRecordFile = async (formData) => {
-  const response = await api.post('/api/records/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  return response.data;
+// ── Auth ──────────────────────────────────────────────────────
+export const loginUser = async (email, password) => {
+  const res = await api.post('/api/auth/login', { email, password });
+  return res.data;
 };
 
-export const createManualRecord = async (payload) => {
-  const response = await api.post('/api/records/manual', payload);
-  return response.data;
+export const registerUser = async (email, password, full_name) => {
+  const res = await api.post('/api/auth/register', { email, password, full_name });
+  return res.data;
 };
 
-export const getRecords = async (skip = 0, limit = 50) => {
-  const response = await api.get(`/api/records/?skip=${skip}&limit=${limit}`);
-  return response.data;
+export const logoutUser = async () => {
+  await api.post('/api/auth/logout');
+};
+
+export const refreshTokenReq = async () => {
+  const res = await api.post('/api/auth/refresh', {}, { withCredentials: true });
+  return res.data;
+};
+
+// ── Records ───────────────────────────────────────────────────
+export const uploadRecordFile = async (formData, profileId = null) => {
+  const url = profileId ? `/api/records/upload?profile_id=${profileId}` : '/api/records/upload';
+  const res = await api.post(url, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  return res.data;
+};
+
+export const createManualRecord = async (payload, profileId = null) => {
+  const url = profileId ? `/api/records/manual?profile_id=${profileId}` : '/api/records/manual';
+  const res = await api.post(url, payload);
+  return res.data;
+};
+
+export const getRecords = async (skip = 0, limit = 50, profileId = null) => {
+  const profileParam = profileId ? `&profile_id=${profileId}` : '';
+  const res = await api.get(`/api/records/?skip=${skip}&limit=${limit}${profileParam}`);
+  return res.data;
 };
 
 export const getRecordById = async (recordId) => {
-  const response = await api.get(`/api/records/${recordId}`);
-  return response.data;
+  const res = await api.get(`/api/records/${recordId}`);
+  return res.data;
 };
 
 export const downloadRecord = async (recordId) => {
-  const response = await api.get(`/api/records/${recordId}/download`, {
-    responseType: 'blob',
-  });
-  return response.data;
+  const res = await api.get(`/api/records/${recordId}/download`, { responseType: 'blob' });
+  return res.data;
 };
 
 export const updateRecord = async (recordId, data) => {
-  const response = await api.put(`/api/records/${recordId}`, data);
-  return response.data;
+  const res = await api.put(`/api/records/${recordId}`, data);
+  return res.data;
 };
 
 export const deleteRecord = async (recordId) => {
-  const response = await api.delete(`/api/records/${recordId}`);
-  return response.data;
+  const res = await api.delete(`/api/records/${recordId}`);
+  return res.data;
 };
 
-// Clinical Parameters API
-export const getLatestParams = async () => {
-  const response = await api.get('/api/params/');
-  return response.data;
+// ── Clinical Parameters ───────────────────────────────────────
+export const getLatestParams = async (profileId = null) => {
+  const p = profileId ? `?profile_id=${profileId}` : '';
+  const res = await api.get(`/api/params/${p}`);
+  return res.data;
 };
 
-export const getParamHistory = async (paramName) => {
-  const response = await api.get(`/api/params/${encodeURIComponent(paramName)}`);
-  return response.data;
+export const getParamHistory = async (paramName, profileId = null) => {
+  const p = profileId ? `?profile_id=${profileId}` : '';
+  const res = await api.get(`/api/params/${encodeURIComponent(paramName)}${p}`);
+  return res.data;
 };
 
 export const updateParam = async (paramId, data) => {
-  const response = await api.put(`/api/params/${paramId}`, data);
-  return response.data;
+  const res = await api.put(`/api/params/${paramId}`, data);
+  return res.data;
 };
 
-// Risk API
-export const getCurrentRisk = async () => {
-  const response = await api.get('/api/risk/current');
-  return response.data;
+// ── Risk ──────────────────────────────────────────────────────
+export const getCurrentRisk = async (profileId = null) => {
+  const p = profileId ? `?profile_id=${profileId}` : '';
+  const res = await api.get(`/api/risk/current${p}`);
+  return res.data;
 };
 
-export const getRiskHistory = async (limit = 20) => {
-  const response = await api.get(`/api/risk/history?limit=${limit}`);
-  return response.data;
+export const getRiskHistory = async (limit = 20, profileId = null) => {
+  const p = profileId ? `&profile_id=${profileId}` : '';
+  const res = await api.get(`/api/risk/history?limit=${limit}${p}`);
+  return res.data;
 };
 
-export const recomputeRisk = async () => {
-  const response = await api.post('/api/risk/recompute');
-  return response.data;
+export const recomputeRisk = async (profileId = null) => {
+  const p = profileId ? `?profile_id=${profileId}` : '';
+  const res = await api.post(`/api/risk/recompute${p}`);
+  return res.data;
 };
 
-// Reminders API
-export const getReminders = async (includeAcknowledged = false) => {
-  const response = await api.get(`/api/reminders/?include_acknowledged=${includeAcknowledged}`);
-  return response.data;
+// ── Reminders ─────────────────────────────────────────────────
+export const getReminders = async (includeAcknowledged = false, profileId = null) => {
+  const p = profileId ? `&profile_id=${profileId}` : '';
+  const res = await api.get(`/api/reminders/?include_acknowledged=${includeAcknowledged}${p}`);
+  return res.data;
 };
 
-export const createReminder = async (data) => {
-  const response = await api.post('/api/reminders/', data);
-  return response.data;
+export const createReminder = async (data, profileId = null) => {
+  const p = profileId ? `?profile_id=${profileId}` : '';
+  const res = await api.post(`/api/reminders/${p}`, data);
+  return res.data;
 };
 
 export const updateReminder = async (reminderId, data) => {
-  const response = await api.put(`/api/reminders/${reminderId}`, data);
-  return response.data;
+  const res = await api.put(`/api/reminders/${reminderId}`, data);
+  return res.data;
 };
 
 export const acknowledgeReminder = async (reminderId) => {
-  const response = await api.patch(`/api/reminders/${reminderId}/ack`);
-  return response.data;
+  const res = await api.patch(`/api/reminders/${reminderId}/ack`);
+  return res.data;
 };
 
 export const deleteReminder = async (reminderId) => {
-  const response = await api.delete(`/api/reminders/${reminderId}`);
-  return response.data;
+  const res = await api.delete(`/api/reminders/${reminderId}`);
+  return res.data;
 };
 
-// Doctor Report API
-export const generateDoctorReport = async () => {
-  const response = await api.post('/api/report/generate');
-  return response.data;
+// ── Doctor Reports ────────────────────────────────────────────
+export const generateDoctorReport = async (profileId = null) => {
+  const p = profileId ? `?profile_id=${profileId}` : '';
+  const res = await api.post(`/api/report/generate${p}`);
+  return res.data;
 };
 
 export const getLatestReport = async () => {
-  const response = await api.get('/api/report/latest');
-  return response.data;
+  const res = await api.get('/api/report/latest');
+  return res.data;
 };
 
 export const downloadReportPdf = async (reportId) => {
-  const response = await api.get(`/api/report/${reportId}/pdf`, {
-    responseType: 'blob',
-  });
-  return response.data;
+  const res = await api.get(`/api/report/${reportId}/pdf`, { responseType: 'blob' });
+  return res.data;
 };
 
 export const generateShareLink = async (reportId, expiryHours = 24) => {
-  const response = await api.post(`/api/report/${reportId}/share?expiry_hours=${expiryHours}`);
-  return response.data;
+  const res = await api.post(`/api/report/${reportId}/share?expiry_hours=${expiryHours}`);
+  return res.data;
 };
 
-// Public Share API
 export const getSharedResource = async (token) => {
-  const response = await api.get(`/share/${token}`);
-  return response.data;
+  const res = await api.get(`/share/${token}`);
+  return res.data;
 };
 
 export default api;

@@ -17,18 +17,58 @@ class OCRService:
 
     def __init__(self):
         self._easyocr_reader = None
+        self._easyocr_reader_lang = None
 
-    def _get_easyocr_reader(self):
+    def _get_easyocr_reader(self, lang_code: str = "en"):
         """Lazy load EasyOCR reader (downloads model on first call if not present)."""
-        if self._easyocr_reader is None:
+        easyocr_lang = {"eng": "en", "hin": "hi", "tam": "ta", "tel": "te"}.get(lang_code, "en")
+        if self._easyocr_reader is None or self._easyocr_reader_lang != easyocr_lang:
             try:
                 import easyocr
-                self._easyocr_reader = easyocr.Reader(["en"], gpu=False)
+                self._easyocr_reader = easyocr.Reader(["en", easyocr_lang] if easyocr_lang != "en" else ["en"], gpu=False)
+                self._easyocr_reader_lang = easyocr_lang
             except Exception as e:
                 logger.warning(f"[OCRService] EasyOCR initialization failed: {e}")
         return self._easyocr_reader
 
-    def extract_text_from_image_bytes(self, image_bytes: bytes) -> str:
+    def auto_detect_language(self, text: str) -> str:
+        """Auto-detect language based on Unicode blocks."""
+        if not text:
+            return 'eng'
+        
+        counts = {'hin': 0, 'tam': 0, 'tel': 0}
+        total_chars = len(text)
+        
+        for char in text:
+            code = ord(char)
+            if 0x0900 <= code <= 0x097F:
+                counts['hin'] += 1
+            elif 0x0B80 <= code <= 0x0BFF:
+                counts['tam'] += 1
+            elif 0x0C00 <= code <= 0x0C7F:
+                counts['tel'] += 1
+                
+        for lang, count in counts.items():
+            if count / total_chars > 0.1:
+                return lang
+        return 'eng'
+
+    def normalize_param_name(self, name: str, lang: str) -> str:
+        """Normalize extracted parameter name to English canonical name."""
+        aliases = {
+            'hba1c': 'HbA1c',
+            'ग्लूकोज': 'Glucose',
+            'हीमोग्लोबिन': 'Hemoglobin',
+            'क्रिएटिनिन': 'Creatinine',
+            'यूरिया': 'Urea',
+            'कोलेस्ट्रॉल': 'Cholesterol',
+            'हीमोग्लोबिन a1c': 'HbA1c',
+            'रक्त शर्करा': 'Glucose'
+        }
+        clean_name = name.lower().strip()
+        return aliases.get(clean_name, name)
+
+    def extract_text_from_image_bytes(self, image_bytes: bytes, language: str = 'eng') -> str:
         """Extract text from raw image bytes using pytesseract with EasyOCR fallback."""
         text = ""
         try:
@@ -40,13 +80,14 @@ class OCRService:
         # 1. Try pytesseract first
         try:
             import pytesseract
-            text = pytesseract.image_to_string(image)
+            tesseract_lang = {"eng": "eng", "hin": "hin", "tam": "tam", "tel": "tel"}.get(language, "eng")
+            text = pytesseract.image_to_string(image, lang=tesseract_lang)
         except Exception as e:
             logger.warning(f"[OCRService] pytesseract failed or not installed: {e}")
 
         # 2. Try EasyOCR fallback if text is short
         if len(text.strip()) < OCR_MIN_TEXT_LENGTH:
-            reader = self._get_easyocr_reader()
+            reader = self._get_easyocr_reader(language)
             if reader:
                 try:
                     results = reader.readtext(image_bytes, detail=0)
@@ -65,7 +106,7 @@ class OCRService:
 
         return clean_text
 
-    def extract_text_from_pdf_bytes(self, pdf_bytes: bytes) -> str:
+    def extract_text_from_pdf_bytes(self, pdf_bytes: bytes, language: str = 'eng') -> str:
         """Extract text from PDF using pypdf/pdf2image + OCR."""
         text = ""
 
@@ -90,7 +131,7 @@ class OCRService:
                     img_byte_arr = io.BytesIO()
                     img.save(img_byte_arr, format="PNG")
                     try:
-                        page_text = self.extract_text_from_image_bytes(img_byte_arr.getvalue())
+                        page_text = self.extract_text_from_image_bytes(img_byte_arr.getvalue(), language=language)
                         ocr_texts.append(page_text)
                     except OCRExtractionError:
                         continue
@@ -106,13 +147,13 @@ class OCRService:
 
         return clean_text
 
-    def extract_text(self, file_bytes: bytes, mime_type: str) -> str:
+    def extract_text(self, file_bytes: bytes, mime_type: str, language: str = 'eng') -> str:
         """Extract text according to file MIME type."""
-        logger.info(f"[OCRService] Extracting text for MIME type: {mime_type}")
+        logger.info(f"[OCRService] Extracting text for MIME type: {mime_type} with language: {language}")
         if mime_type == "application/pdf":
-            return self.extract_text_from_pdf_bytes(file_bytes)
+            return self.extract_text_from_pdf_bytes(file_bytes, language=language)
         elif mime_type in ["image/jpeg", "image/png"]:
-            return self.extract_text_from_image_bytes(file_bytes)
+            return self.extract_text_from_image_bytes(file_bytes, language=language)
         elif mime_type.startswith("text/"):
             return file_bytes.decode("utf-8", errors="ignore")
         else:

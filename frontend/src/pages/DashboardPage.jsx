@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Activity, UploadCloud, Bell, FileText, ArrowRight, ShieldCheck } from 'lucide-react';
 import RiskGauge from '../components/RiskGauge';
 import RecordCard from '../components/RecordCard';
 import ReminderCard from '../components/ReminderCard';
+import { useFamily } from '../context/FamilyContext';
 import {
   getCurrentRisk,
   recomputeRisk,
@@ -14,20 +17,26 @@ import {
   deleteRecord,
 } from '../services/api';
 
-export default function DashboardPage({ setActivePage, setSelectedRecordId }) {
+export default function DashboardPage() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { activeProfile } = useFamily();
+  
   const [riskData, setRiskData] = useState(null);
   const [records, setRecords] = useState([]);
   const [reminders, setReminders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRecomputing, setIsRecomputing] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    if (!activeProfile) return;
     setLoading(true);
     try {
+      const pid = activeProfile.profile_id;
       const [riskRes, recordsRes, remindersRes] = await Promise.allSettled([
-        getCurrentRisk(),
-        getRecords(0, 4),
-        getReminders(false),
+        getCurrentRisk(pid),
+        getRecords(0, 4, pid),
+        getReminders(false, pid),
       ]);
 
       if (riskRes.status === 'fulfilled') setRiskData(riskRes.value);
@@ -38,16 +47,17 @@ export default function DashboardPage({ setActivePage, setSelectedRecordId }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeProfile]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleRecompute = async () => {
+    if (!activeProfile) return;
     setIsRecomputing(true);
     try {
-      const updated = await recomputeRisk();
+      const updated = await recomputeRisk(activeProfile.profile_id);
       setRiskData(updated);
     } catch (e) {
       console.error('Recompute failed:', e);
@@ -90,7 +100,7 @@ export default function DashboardPage({ setActivePage, setSelectedRecordId }) {
   };
 
   const handleDeleteRecord = async (recordId) => {
-    if (!confirm('Are you sure you want to remove this record?')) return;
+    if (!window.confirm('Are you sure you want to remove this record?')) return;
     try {
       await deleteRecord(recordId);
       setRecords((prev) => prev.filter((r) => r.record_id !== recordId));
@@ -105,7 +115,7 @@ export default function DashboardPage({ setActivePage, setSelectedRecordId }) {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-medium text-gray-600">Gathering health intelligence...</p>
+          <p className="text-sm font-medium text-gray-600">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -120,7 +130,7 @@ export default function DashboardPage({ setActivePage, setSelectedRecordId }) {
             Clinical Summary Overview
           </span>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Personal Health Intelligence
+            {t('dashboard.greeting')} {activeProfile?.member_name || ''}
           </h1>
           <p className="text-sm text-teal-100/90 mt-1 max-w-xl">
             ArogyaMitra tracks clinical trajectories, flags multi-marker anomalies, and prepares structured pre-visit dossiers for your physician.
@@ -129,13 +139,13 @@ export default function DashboardPage({ setActivePage, setSelectedRecordId }) {
 
         <div className="flex flex-wrap gap-2.5">
           <button
-            onClick={() => setActivePage('upload')}
+            onClick={() => navigate('/upload')}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-primary-dark font-bold text-xs sm:text-sm hover:bg-accent-light transition-all shadow-md"
           >
-            <UploadCloud className="w-4 h-4" /> Upload Document
+            <UploadCloud className="w-4 h-4" /> {t('dashboard.uploadFirst')}
           </button>
           <button
-            onClick={() => setActivePage('report')}
+            onClick={() => navigate('/report')}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs sm:text-sm border border-white/20 transition-all"
           >
             <FileText className="w-4 h-4" /> Doctor-Prep Report
@@ -155,14 +165,14 @@ export default function DashboardPage({ setActivePage, setSelectedRecordId }) {
         </div>
 
         {/* Reminders Column */}
-        <div className="glass-card rounded-2xl p-6 border border-gray-200/80 flex flex-col justify-between">
+        <div className="glass-card rounded-2xl p-6 border border-gray-200/80 flex flex-col justify-between bg-white">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-bold text-gray-900 tracking-tight flex items-center gap-2">
                 <Bell className="w-4 h-4 text-primary" /> Active Reminders
               </h3>
               <button
-                onClick={() => setActivePage('reminders')}
+                onClick={() => navigate('/reminders')}
                 className="text-xs text-primary hover:underline font-semibold flex items-center gap-1"
               >
                 View all <ArrowRight className="w-3 h-3" />
@@ -188,8 +198,8 @@ export default function DashboardPage({ setActivePage, setSelectedRecordId }) {
           </div>
 
           <button
-            onClick={() => setActivePage('reminders')}
-            className="w-full mt-4 py-2 text-xs font-semibold text-primary hover:bg-primary/5 rounded-xl border border-primary/20 transition-all text-center"
+            onClick={() => navigate('/reminders')}
+            className="w-full mt-4 py-2 text-xs font-semibold text-primary hover:bg-primary/5 rounded-xl border border-primary/20 transition-all text-center cursor-pointer"
           >
             Manage All Medication Schedules
           </button>
@@ -201,14 +211,14 @@ export default function DashboardPage({ setActivePage, setSelectedRecordId }) {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-bold text-gray-900 tracking-tight">
-              Recent Health Documents
+              {t('dashboard.recentRecords')}
             </h2>
             <p className="text-xs text-gray-500">
               Encrypted lab tests, prescriptions, and manual entries
             </p>
           </div>
           <button
-            onClick={() => setActivePage('upload')}
+            onClick={() => navigate('/upload')}
             className="text-xs text-primary hover:underline font-semibold flex items-center gap-1"
           >
             Add new record <ArrowRight className="w-3 h-3" />
@@ -216,17 +226,14 @@ export default function DashboardPage({ setActivePage, setSelectedRecordId }) {
         </div>
 
         {records.length === 0 ? (
-          <div className="glass-card rounded-2xl p-8 text-center border-dashed border-2 border-gray-200">
+          <div className="glass-card bg-white rounded-2xl p-8 text-center border-dashed border-2 border-gray-200">
             <ShieldCheck className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-            <h4 className="text-sm font-semibold text-gray-700">No medical documents yet</h4>
-            <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
-              Upload your lab panels, prescriptions, or imaging reports to build your timeline.
-            </p>
+            <h4 className="text-sm font-semibold text-gray-700">{t('dashboard.noRecords')}</h4>
             <button
-              onClick={() => setActivePage('upload')}
+              onClick={() => navigate('/upload')}
               className="mt-4 px-4 py-2 rounded-xl bg-primary text-white text-xs font-medium"
             >
-              Upload Document
+              {t('dashboard.uploadFirst')}
             </button>
           </div>
         ) : (
@@ -238,8 +245,7 @@ export default function DashboardPage({ setActivePage, setSelectedRecordId }) {
                 onDownload={handleDownloadRecord}
                 onDelete={handleDeleteRecord}
                 onViewDetails={(id) => {
-                  setSelectedRecordId(id);
-                  setActivePage('detail');
+                  navigate(`/detail/${id}`); // Assumes you'd add this route, or handle state differently
                 }}
               />
             ))}

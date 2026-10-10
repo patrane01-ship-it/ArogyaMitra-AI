@@ -1,61 +1,86 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { FamilyProvider } from './context/FamilyContext';
 import Navbar from './components/Navbar';
+import AuthPage from './components/AuthPage';
+
+// Import Pages
 import DashboardPage from './pages/DashboardPage';
 import UploadPage from './pages/UploadPage';
 import TimelinePage from './pages/TimelinePage';
 import RemindersPage from './pages/RemindersPage';
 import DoctorReportPage from './pages/DoctorReportPage';
-import RecordDetailPage from './pages/RecordDetailPage';
-import SharePage from './pages/SharePage';
+import FamilyPage from './pages/FamilyPage';
+import SubscriptionPage from './pages/SubscriptionPage';
+import PredictionsPage from './pages/PredictionsPage';
+import DoctorWorkspacePage from './pages/DoctorWorkspacePage';
 
-export default function App() {
-  const [activePage, setActivePage] = useState('dashboard');
-  const [selectedRecordId, setSelectedRecordId] = useState(null);
-  const [shareToken, setShareToken] = useState(null);
+function ProtectedRoute({ children }) {
+  const { token, loading } = useAuth();
+  if (loading) return null;
+  if (!token) return <Navigate to="/login" replace />;
+  return children;
+}
 
-  // Check URL for /share/{token}
-  useEffect(() => {
-    const path = window.location.pathname;
-    const match = path.match(/^\/share\/([^/]+)/);
-    if (match && match[1]) {
-      setShareToken(match[1]);
-    }
-  }, []);
+function Layout({ children }) {
+  const location = useLocation();
+  const isDoctorView = location.pathname.startsWith('/doctor-view');
 
-  // If viewing a share link, show isolated public consultation view
-  if (shareToken) {
-    return <SharePage token={shareToken} />;
+  if (isDoctorView) {
+    return children;
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Navbar activePage={activePage} setActivePage={setActivePage} />
-
-      <main className="flex-1 pb-16">
-        {activePage === 'dashboard' && (
-          <DashboardPage
-            setActivePage={setActivePage}
-            setSelectedRecordId={setSelectedRecordId}
-          />
-        )}
-        {activePage === 'upload' && <UploadPage setActivePage={setActivePage} />}
-        {activePage === 'timeline' && <TimelinePage />}
-        {activePage === 'reminders' && <RemindersPage />}
-        {activePage === 'report' && <DoctorReportPage />}
-        {activePage === 'detail' && (
-          <RecordDetailPage
-            recordId={selectedRecordId}
-            setActivePage={setActivePage}
-          />
-        )}
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#F8FAFC' }}>
+      <Navbar />
+      <main style={{ flex: 1, overflowY: 'auto' }}>
+        {children}
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-200/80 bg-white/50 py-4 text-center text-xs text-gray-500">
-        <p>
-          ArogyaMitra AI — Agentic Personal Health Intelligence • AES-256-GCM Encrypted At-Rest
-        </p>
-      </footer>
     </div>
+  );
+}
+
+function MainApp() {
+  const { token, loading } = useAuth();
+
+  if (loading) return null;
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/doctor-view/:token" element={<DoctorWorkspacePage token={useLocation().pathname.split('/').pop()} />} />
+        
+        <Route path="/login" element={token ? <Navigate to="/" replace /> : <AuthPage onAuthenticated={() => {}} />} />
+        
+        <Route path="/*" element={
+          <ProtectedRoute>
+            <FamilyProvider>
+              <Layout>
+                <Routes>
+                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/upload" element={<UploadPage />} />
+                  <Route path="/timeline" element={<TimelinePage />} />
+                  <Route path="/reminders" element={<RemindersPage />} />
+                  <Route path="/report" element={<DoctorReportPage />} />
+                  <Route path="/family" element={<FamilyPage />} />
+                  <Route path="/subscription" element={<SubscriptionPage />} />
+                  <Route path="/predictions" element={<PredictionsPage />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Layout>
+            </FamilyProvider>
+          </ProtectedRoute>
+        } />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
   );
 }
