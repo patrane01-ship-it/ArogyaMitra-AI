@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional, Dict, Any
-from sqlalchemy import Column, String, Float, DateTime, ForeignKey, Index
+from sqlalchemy import Column, String, Float, DateTime, ForeignKey, Index ,Boolean
 from backend.database import Base
 from backend.exceptions.arogya_errors import (
     InvalidParameterValueError,
