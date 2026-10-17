@@ -40,6 +40,13 @@ class ClinicalParameter(Base):
     isolation_forest_score = Column(Float, nullable=True)
     is_anomaly = Column(Boolean, nullable=True)
     ml_risk_contribution = Column(Float, nullable=True)
+    # Phase 4 Data Quality & Smart Units extensions
+    ref_source = Column(String(32), default="DEFAULT", nullable=True)  # REPORT, DEFAULT, DERIVED
+    value_original = Column(Float, nullable=True)
+    unit_original = Column(String(50), nullable=True)
+    value_normalized = Column(Float, nullable=True)
+    needs_review = Column(Boolean, default=False, nullable=True)
+    field_confidence = Column(Float, nullable=True)
 
     def compute_status(self) -> str:
         """

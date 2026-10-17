@@ -38,6 +38,8 @@ class HealthRecord(Base):
     raw_text = Column(Text, nullable=True)
     extracted_entities = Column(JSON, nullable=True)
     encryption_hash = Column(String(128), nullable=True)
+    file_hash = Column(String(64), nullable=True, index=True)
+    stored_file_key = Column(String(255), nullable=True, index=True)
     is_processed = Column(Boolean, default=False, nullable=False)
     is_deleted = Column(Boolean, default=False, nullable=False, index=True)
     share_token = Column(Text, nullable=True)

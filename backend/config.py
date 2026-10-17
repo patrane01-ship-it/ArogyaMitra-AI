@@ -4,11 +4,14 @@ Loads environment variables and provides application constants.
 """
 
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from typing import List
 import json
 
 
 class Settings(BaseSettings):
+    model_config = ConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
+
     # ── Database ─────────────────────────────────────────
     DATABASE_URL: str
     
@@ -42,6 +45,31 @@ class Settings(BaseSettings):
     ANOMALY_CONTAMINATION: float = 0.1
     DRUG_INTERACTION_DISTANCE_THRESHOLD: float = 0.35
     
+    # ── Phase 4 Settings: Trust, Intelligence & Reliability ─
+    S3_ENDPOINT: str = ""
+    S3_BUCKET: str = "arogyamitra-records"
+    S3_ACCESS_KEY: str = ""
+    S3_SECRET_KEY: str = ""
+    KEK_VERSION: str = "v1"
+    KEK_CURRENT: str = ""
+    KEK_PREVIOUS: str = ""
+    VAPID_PUBLIC_KEY: str = ""
+    VAPID_PRIVATE_KEY: str = ""
+    EMAIL_PROVIDER: str = "mock"
+    EMAIL_API_KEY: str = ""
+    SENTRY_DSN: str = ""
+    METRICS_ALLOWED_IPS: str = '["127.0.0.1", "::1"]'
+    QUEUE_CONCURRENCY: int = 5
+    EXPORT_TTL_HOURS: int = 24
+    ERASURE_GRACE_DAYS: int = 7
+    
+    @property
+    def metrics_allowed_ips_list(self) -> List[str]:
+        try:
+            return json.loads(self.METRICS_ALLOWED_IPS)
+        except json.JSONDecodeError:
+            return ["127.0.0.1", "::1"]
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS_ORIGINS from JSON string to list."""
@@ -49,10 +77,6 @@ class Settings(BaseSettings):
             return json.loads(self.CORS_ORIGINS)
         except json.JSONDecodeError:
             return ["http://localhost:5173"]
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
 
 
 # Global settings instance

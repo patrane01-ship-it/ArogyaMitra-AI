@@ -390,3 +390,164 @@ class UnsupportedAudioFormatError(ArogyaError):
 class TranscriptionFailedError(ArogyaError):
     def __init__(self, message: str = "Audio transcription failed. Please re-record or speak more clearly"):
         super().__init__(message, status_code=422)
+
+
+# ── Phase 4: Consent & Privacy Errors ──────────────────────────
+class ConsentRequiredError(ArogyaError):
+    """Raised when an operation requires explicit consent that was not granted."""
+    def __init__(self, message: str = "Consent is required to perform this action", purpose: str = None):
+        super().__init__(message, status_code=403, field="purpose")
+        self.error_code = "CONSENT_REQUIRED"
+        self.purpose = purpose
+
+
+class InvalidConsentPurposeError(ArogyaError):
+    """Raised when an invalid consent purpose is supplied."""
+    def __init__(self, message: str = "Invalid consent purpose"):
+        super().__init__(message, status_code=422, field="purpose")
+
+
+class ReauthenticationRequiredError(ArogyaError):
+    """Raised when password/MFA re-verification is mandatory for sensitive actions."""
+    def __init__(self, message: str = "Re-authentication is required to perform this action"):
+        super().__init__(message, status_code=403)
+
+
+class ExportExpiredError(ArogyaError):
+    """Raised when a data export download link has expired."""
+    def __init__(self, message: str = "Data export download link has expired"):
+        super().__init__(message, status_code=410)
+
+
+class ErasureNotCancellableError(ArogyaError):
+    """Raised when erasure grace period has lapsed or erasure already completed."""
+    def __init__(self, message: str = "Erasure request cannot be cancelled at this stage"):
+        super().__init__(message, status_code=400)
+
+
+class ErasureVerificationFailedError(ArogyaError):
+    """Raised when post-erasure audit detects remaining user data."""
+    def __init__(self, message: str = "Post-erasure verification failed: remaining artifacts detected"):
+        super().__init__(message, status_code=500)
+
+
+# ── Phase 4: Minor / Guardian Consent Errors ───────────────────
+class GuardianConsentRequiredError(ArogyaError):
+    """Raised when a minor profile requires verifiable guardian consent."""
+    def __init__(self, message: str = "Verifiable guardian consent is required for this minor profile"):
+        super().__init__(message, status_code=403, field="guardian_consent")
+
+
+class MinorFeatureRestrictedError(ArogyaError):
+    """Raised when an adult-only feature (e.g. marketing, research, external bot) is blocked for a minor."""
+    def __init__(self, message: str = "This feature is restricted for minor profiles under DPDP regulations"):
+        super().__init__(message, status_code=403)
+
+
+# ── Phase 4: Infrastructure & Storage Errors ───────────────────
+class JobNotFoundError(ArogyaError):
+    """Raised when background job record is not found."""
+    def __init__(self, message: str = "Job not found"):
+        super().__init__(message, status_code=404)
+
+
+class StorageWriteError(ArogyaError):
+    """Raised when storing an encrypted payload fails."""
+    def __init__(self, message: str = "Failed to write object to file store"):
+        super().__init__(message, status_code=502)
+
+
+class KeyVersionNotFoundError(ArogyaError):
+    """Raised when KMS/KEK version cannot be resolved."""
+    def __init__(self, message: str = "Key encryption key version not found"):
+        super().__init__(message, status_code=500)
+
+
+class CircuitOpenError(ArogyaError):
+    """Raised when upstream LLM or external service circuit breaker is open."""
+    def __init__(self, message: str = "Upstream service temporarily unavailable (circuit open)"):
+        super().__init__(message, status_code=503)
+
+
+# ── Phase 4: Account Security Errors ───────────────────────────
+class EmailNotVerifiedError(ArogyaError):
+    """Raised when email verification is required to proceed."""
+    def __init__(self, message: str = "Email must be verified before performing this action"):
+        super().__init__(message, status_code=403)
+
+
+class ResetTokenInvalidError(ArogyaError):
+    """Raised when password reset token is expired, used, or invalid."""
+    def __init__(self, message: str = "Password reset token is invalid or expired"):
+        super().__init__(message, status_code=400)
+
+
+class MfaRequiredError(ArogyaError):
+    """Raised when TOTP MFA verification is required."""
+    def __init__(self, message: str = "MFA verification code is required"):
+        super().__init__(message, status_code=403)
+
+
+class MfaCodeInvalidError(ArogyaError):
+    """Raised when TOTP verification code or recovery code is invalid."""
+    def __init__(self, message: str = "Invalid MFA verification code or recovery code"):
+        super().__init__(message, status_code=400)
+
+
+class SessionRevokedError(ArogyaError):
+    """Raised when a user session has been revoked or expired."""
+    def __init__(self, message: str = "Session has been revoked or expired"):
+        super().__init__(message, status_code=401)
+
+
+class RefreshReuseDetectedError(ArogyaError):
+    """Raised when refresh token reuse attack is detected."""
+    def __init__(self, message: str = "Invalid refresh token sequence detected"):
+        super().__init__(message, status_code=401)
+
+
+# ── Phase 4: Data Quality & Normalization Errors ───────────────
+class ImplausibleValueError(ArogyaError):
+    """Raised when extracted or inputted clinical parameter fails clinical plausibility bounds."""
+    def __init__(self, message: str = "Value is outside clinically plausible range"):
+        super().__init__(message, status_code=422, field="value")
+
+
+class UnknownUnitError(ArogyaError):
+    """Raised when a unit cannot be canonicalized."""
+    def __init__(self, message: str = "Unknown or unsupported unit"):
+        super().__init__(message, status_code=422, field="unit")
+
+
+class DuplicateRecordError(ArogyaError):
+    """Raised when identical medical report or parameters have already been uploaded."""
+    def __init__(self, message: str = "Duplicate record detected"):
+        super().__init__(message, status_code=409)
+
+
+# ── Phase 4: Ask Your Records (Grounding) Errors ───────────────
+class NoGroundedAnswerError(ArogyaError):
+    """Raised when no verified grounded information exists in user records."""
+    def __init__(self, message: str = "I couldn't find that in your records"):
+        super().__init__(message, status_code=404)
+
+
+class NumericGroundingFailedError(ArogyaError):
+    """Raised when generated response numbers do not strictly match source document chunks."""
+    def __init__(self, message: str = "Generated response could not be verified against records"):
+        super().__init__(message, status_code=422)
+
+
+# ── Phase 4: Caregiver & Access Policy Errors ──────────────────
+class CaregiverInviteInvalidError(ArogyaError):
+    """Raised when caregiver invitation is expired or invalid."""
+    def __init__(self, message: str = "Caregiver invite token is invalid or expired"):
+        super().__init__(message, status_code=400)
+
+
+class AccessPolicyDeniedError(ArogyaError):
+    """Raised when ProfileAccessPolicy denies the user requested action."""
+    def __init__(self, message: str = "Not found"):
+        # Return 404 to avoid leaking resource existence across profiles
+        super().__init__(message, status_code=404)
+

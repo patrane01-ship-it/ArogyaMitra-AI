@@ -30,6 +30,8 @@ class FamilyProfile(Base):
     relation = Column(String(20), nullable=False)
     date_of_birth = Column(Date, nullable=True)
     gender = Column(String(20), nullable=True)
+    sex = Column(String(20), nullable=True)  # MALE, FEMALE, OTHER
+    is_minor = Column(Boolean, default=False, nullable=False)
     abha_id = Column(String(20), nullable=True)
     is_primary = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))

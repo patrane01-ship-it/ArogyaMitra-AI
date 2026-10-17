@@ -1,6 +1,6 @@
 """
 ArogyaMitra AI - ORM Models Package
-Exports Base and all Phase 1, Phase 2, and Phase 3 entities for SQLAlchemy and Alembic migrations.
+Exports Base and all Phase 1, Phase 2, Phase 3, and Phase 4 entities for SQLAlchemy and Alembic migrations.
 """
 
 from backend.database import Base
@@ -22,6 +22,32 @@ from backend.models.doctor_access import DoctorAccess
 from backend.models.wearable_reading import WearableReading
 from backend.models.whatsapp_session import WhatsAppSession
 from backend.models.api_key import APIKey
+
+# Phase 4 Models
+from backend.models.phase4_models import (
+    PrivacyNoticeVersion,
+    ConsentRecord,
+    GuardianConsent,
+    DataExportJob,
+    ErasureRequest,
+    AuditLogEntry,
+    JobRecord,
+    StoredFileKey,
+    OCRCorrection,
+    ReferenceRangeProfile,
+    NotificationPreference,
+    PushSubscription,
+    ReminderDelivery,
+    AdherenceLog,
+    CaregiverAccess,
+    EmailVerificationToken,
+    PasswordResetToken,
+    TotpSecret,
+    RecoveryCode,
+    UserSession,
+    FeedbackEntry,
+    DriftReport,
+)
 
 __all__ = [
     "Base",
@@ -48,4 +74,27 @@ __all__ = [
     "WearableReading",
     "WhatsAppSession",
     "APIKey",
+    # Phase 4
+    "PrivacyNoticeVersion",
+    "ConsentRecord",
+    "GuardianConsent",
+    "DataExportJob",
+    "ErasureRequest",
+    "AuditLogEntry",
+    "JobRecord",
+    "StoredFileKey",
+    "OCRCorrection",
+    "ReferenceRangeProfile",
+    "NotificationPreference",
+    "PushSubscription",
+    "ReminderDelivery",
+    "AdherenceLog",
+    "CaregiverAccess",
+    "EmailVerificationToken",
+    "PasswordResetToken",
+    "TotpSecret",
+    "RecoveryCode",
+    "UserSession",
+    "FeedbackEntry",
+    "DriftReport",
 ]

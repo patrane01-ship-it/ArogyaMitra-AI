@@ -200,11 +200,25 @@ app.include_router(doctor_public_router)
 app.include_router(api_keys_router)
 app.include_router(v1_router)
 
+# Phase 3 Additional Routers (WhatsApp & Voice)
+from backend.routers.whatsapp_router import router as whatsapp_router
+from backend.routers.voice_router import router as voice_router
+
+app.include_router(whatsapp_router)
+app.include_router(voice_router)
+
+# Phase 4 Routers
+from backend.routers.privacy_router import router as privacy_router
+from backend.routers.phase4_router import router as phase4_router
+
+app.include_router(privacy_router)
+app.include_router(phase4_router)
+
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "ok", "version": "3.0.0", "phase": "3"}
+    return {"status": "ok", "version": "4.0.0", "phase": "4"}
 
 
 if __name__ == "__main__":
